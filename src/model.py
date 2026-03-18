@@ -57,31 +57,33 @@ class SpikeNet(nn.Module):
         super().__init__()
 
         self.fc1 = nn.Linear(n_features, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 2)
+        self.fc2 = nn.Linear(128, 96)
+        self.fc3 = nn.Linear(96, 64)
+        self.fc4 = nn.Linear(64, 2)
 
-        self.lif1 = LIF(28.0, 0.1)
-        self.lif2 = LIF(14.0, 0.35)
-        self.lif3 = LIF(16.0, 0.5)
+        self.lif1 = LIF(28, 0.1)
+        self.lif2 = LIF(18, 0.25)
+        self.lif3 = LIF(14, 0.35)
+        self.lif4 = LIF(16, 0.5)
 
-        self.scale1 = 35.0
-        self.scale2 = 18.0
-        self.scale3 = 10.1
-
-    def forward(self, x, epoch=0, total_epochs=10):
-        B = x.size(0)
+    def forward(self, x):
         x = gaussian_spike_encoder(x)
+        B = x.size(0)
 
         V1 = torch.zeros(B, 128, device=x.device)
-        V2 = torch.zeros(B, 64, device=x.device)
-        V3 = torch.zeros(B, 2, device=x.device)
+        V2 = torch.zeros(B, 96, device=x.device)
+        V3 = torch.zeros(B, 64, device=x.device)
+        V4 = torch.zeros(B, 2, device=x.device)
 
-        spk_sum = torch.zeros(B, 2, device=x.device)
+        out = 0
 
         for t in range(x.size(1)):
-            s1, V1 = self.lif1(self.fc1(x[:, t]) * self.scale1, V1, epoch, total_epochs)
-            s2, V2 = self.lif2(self.fc2(s1) * self.scale2, V2, epoch, total_epochs)
-            s3, V3 = self.lif3(self.fc3(s2) * self.scale3, V3, epoch, total_epochs)
-            spk_sum += s3
+            s1, V1 = self.lif1(self.fc1(x[:, t]), V1)
+            s2, V2 = self.lif2(self.fc2(s1), V2)
+            s3, V3 = self.lif3(self.fc3(s2), V3)
+            s4, V4 = self.lif4(self.fc4(s3), V4)
 
-        return V3, spk_sum.mean()
+            out += s4
+
+
+        return V4, spk_sum.mean()
